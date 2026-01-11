@@ -13,5 +13,5 @@ resource "aws_subnet" "private1" {
 resource "aws_subnet" "private2" {
   vpc_id            = aws_vpc.vpc.id
   cidr_block        = var.private_subnet_2_cidr
-  availability_zone = "us-west-1c"
+  availability_zone = "us-west-1b"
 }
