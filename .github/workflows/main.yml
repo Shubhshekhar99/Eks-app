@@ -50,14 +50,14 @@ jobs:
     #     cd terraform
     #     terraform apply -auto-approve
 
-    # -------------------------
-    # 4. kubeconfig
-    # -------------------------
-    - name: Update kubeconfig
-      run: |
-        aws eks update-kubeconfig \
-          --region ${{ secrets.AWS_REGION }} \
-          --name demo-eks
+    # # -------------------------
+    # # 4. kubeconfig
+    # # -------------------------
+    # - name: Update kubeconfig
+    #   run: |
+    #     aws eks update-kubeconfig \
+    #       --region ${{ secrets.AWS_REGION }} \
+    #       --name demo-eks
 
     # -------------------------
     # 5. ECR Login
