@@ -1,4 +1,4 @@
-# CLUSTER ROLE
+# Cluster Role
 resource "aws_iam_role" "cluster_role" {
   name = "${var.cluster_name}-cluster-role"
 
@@ -17,7 +17,7 @@ resource "aws_iam_role_policy_attachment" "cluster_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
 }
 
-# EKS CLUSTER
+# EKS Cluster
 resource "aws_eks_cluster" "this" {
   name     = var.cluster_name
   role_arn = aws_iam_role.cluster_role.arn
@@ -26,17 +26,13 @@ resource "aws_eks_cluster" "this" {
     subnet_ids = var.subnet_ids
   }
 
-  tags = {
-    Name = var.cluster_name
-  }
-
   depends_on = [
     aws_iam_role.cluster_role,
     aws_iam_role_policy_attachment.cluster_policy
   ]
 }
 
-# NODE ROLE
+# Node Role
 resource "aws_iam_role" "node_role" {
   name = "${var.cluster_name}-node-role"
 
@@ -65,7 +61,7 @@ resource "aws_iam_role_policy_attachment" "node_policy3" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
-# NODE GROUP
+# Node Group
 resource "aws_eks_node_group" "nodes" {
   cluster_name    = aws_eks_cluster.this.name
   node_group_name = "${var.cluster_name}-nodes"
@@ -73,16 +69,12 @@ resource "aws_eks_node_group" "nodes" {
   subnet_ids      = var.subnet_ids
 
   scaling_config {
-    desired_size = 2
-    min_size     = 1
-    max_size     = 3
+    desired_size = var.node_group_desired_size
+    min_size     = var.node_group_min_size
+    max_size     = var.node_group_max_size
   }
 
-  instance_types = ["t3.medium"]
-
-  tags = {
-    Name = "${var.cluster_name}-nodes"
-  }
+  instance_types = [var.node_instance_type]
 
   depends_on = [
     aws_iam_role.node_role,
@@ -92,3 +84,4 @@ resource "aws_eks_node_group" "nodes" {
     aws_eks_cluster.this
   ]
 }
+
