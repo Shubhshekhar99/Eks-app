@@ -1,6 +1,6 @@
 # CLUSTER ROLE
 resource "aws_iam_role" "cluster_role" {
-  name = "eks-cluster-role"
+  name = "${var.cluster_name}-cluster-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -25,11 +25,20 @@ resource "aws_eks_cluster" "this" {
   vpc_config {
     subnet_ids = var.subnet_ids
   }
+
+  tags = {
+    Name = var.cluster_name
+  }
+
+  depends_on = [
+    aws_iam_role.cluster_role,
+    aws_iam_role_policy_attachment.cluster_policy
+  ]
 }
 
 # NODE ROLE
 resource "aws_iam_role" "node_role" {
-  name = "eks-node-role"
+  name = "${var.cluster_name}-node-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -56,11 +65,12 @@ resource "aws_iam_role_policy_attachment" "node_policy3" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
+# NODE GROUP
 resource "aws_eks_node_group" "nodes" {
   cluster_name    = aws_eks_cluster.this.name
-  node_group_name = "demo-nodes"
-  node_role_arn  = aws_iam_role.node_role.arn
-  subnet_ids     = var.subnet_ids
+  node_group_name = "${var.cluster_name}-nodes"
+  node_role_arn   = aws_iam_role.node_role.arn
+  subnet_ids      = var.subnet_ids
 
   scaling_config {
     desired_size = 2
@@ -69,4 +79,16 @@ resource "aws_eks_node_group" "nodes" {
   }
 
   instance_types = ["t3.medium"]
+
+  tags = {
+    Name = "${var.cluster_name}-nodes"
+  }
+
+  depends_on = [
+    aws_iam_role.node_role,
+    aws_iam_role_policy_attachment.node_policy1,
+    aws_iam_role_policy_attachment.node_policy2,
+    aws_iam_role_policy_attachment.node_policy3,
+    aws_eks_cluster.this
+  ]
 }
