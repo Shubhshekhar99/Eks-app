@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<body>
+<h1>EKS Learning Project</h1>
+<button onclick="load()">Load Users</button>
+<pre id="out"></pre>
+
+<script>
+function load() {
+  fetch("http://backend:5000/users")
+    .then(r => r.json())
+    .then(d => document.getElementById("out").innerText = d.join(", "));
+}
+</script>
+</body>
+</html>
