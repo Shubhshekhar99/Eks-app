@@ -34,22 +34,21 @@ jobs:
     # -------------------------
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
-    
+
     - name: Terraform Init
       run: |
         cd terraform
         terraform init
-    
+
     - name: Terraform Plan
       run: |
         cd terraform
         terraform plan
-    
+
     - name: Terraform Apply
       run: |
         cd terraform
         terraform apply -auto-approve
-
 
     # -------------------------
     # 4. kubeconfig
@@ -105,3 +104,13 @@ jobs:
 
     - name: Deploy Frontend
       run: kubectl apply -f k8s/frontend.yaml
+
+    # -------------------------
+    # 9. Terraform Destroy (ONLY IF PIPELINE FAILS)
+    # -------------------------
+    - name: Terraform Destroy on Failure
+      if: failure()
+      run: |
+        echo "Pipeline failed. Destroying infrastructure..."
+        cd terraform
+        terraform destroy -auto-approve
