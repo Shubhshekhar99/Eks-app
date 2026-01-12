@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: backend
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: backend
@@ -12,30 +12,11 @@ spec:
       labels:
         app: backend
     spec:
-
-      # ✅ INIT CONTAINER: WAIT FOR MYSQL TO BE READY
-      initContainers:
-      - name: wait-for-mysql
-        image: mysql:8.0
-        envFrom:
-        - secretRef:
-            name: db-secret
-        command:
-        - sh
-        - -c
-        - |
-          until mysqladmin ping -h mysql -u"$MYSQL_USER" --silent; do
-            echo "Waiting for MySQL..."
-            sleep 3
-          done
-
       containers:
       - name: backend
         image: 360477615168.dkr.ecr.us-west-1.amazonaws.com/backend:latest
         ports:
         - containerPort: 5000
-
-        # ✅ BACKEND ENVIRONMENT VARIABLES
         env:
         - name: DB_HOST
           valueFrom:
