@@ -9,108 +9,210 @@ permissions:
   id-token: write
   contents: read
 
+env:
+  CLUSTER_NAME: demo-eks
+  AWS_REGION: us-west-1
+  ECR_REPO_BACKEND: backend
+  ECR_REPO_FRONTEND: frontend
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-    # -------------------------
-    # 1. Checkout
-    # -------------------------
+    # -------------------------------------------------
+    # 1. Checkout source code
+    # -------------------------------------------------
     - name: Checkout
       uses: actions/checkout@v4
 
-    # -------------------------
-    # 2. Configure AWS via OIDC
-    # -------------------------
+    # -------------------------------------------------
+    # 2. Configure AWS Credentials via OIDC
+    # -------------------------------------------------
     - name: Configure AWS Credentials (OIDC)
       uses: aws-actions/configure-aws-credentials@v4
       with:
         role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
-        aws-region: ${{ secrets.AWS_REGION }}
+        aws-region: ${{ env.AWS_REGION }}
 
-#     # -------------------------
-#     # 3. Terraform
-#     # -------------------------
-#     - name: Setup Terraform
-#       uses: hashicorp/setup-terraform@v3
-
-#     - name: Terraform Init
-#       run: |
-#         cd terraform
-#         terraform init
-
-#     - name: Terraform Plan
-#       run: |
-#         cd terraform
-#         terraform plan
-
-#     # - name: Terraform apply
-#     #   run: |
-#     #     cd terraform
-#     #     terraform apply -auto-approve
-
-#     # # -------------------------
-#     # # 4. kubeconfig
-#     # # -------------------------
-#     # - name: Update kubeconfig
-#     #   run: |
-#     #     aws eks update-kubeconfig \
-#     #       --region ${{ secrets.AWS_REGION }} \
-#     #       --name demo-eks
-
-    # -------------------------
-    # 5. ECR Login
-    # -------------------------
-    - name: Login to ECR
+    # -------------------------------------------------
+    # 3. Login to Amazon ECR
+    # -------------------------------------------------
+    - name: Login to Amazon ECR
       run: |
-        aws ecr get-login-password --region ${{ secrets.AWS_REGION }} \
+        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+        aws ecr get-login-password --region $AWS_REGION \
         | docker login --username AWS \
-        --password-stdin \
-        $(aws sts get-caller-identity --query Account --output text).dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+          --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
-    # -------------------------
-    # 6. Build & Push Backend
-    # -------------------------
-    - name: Build Backend
+    # -------------------------------------------------
+    # 4. Build & Push Backend Image
+    # -------------------------------------------------
+    - name: Build & Push Backend
       run: |
         ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+        IMAGE_URI=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_BACKEND:latest
+
         docker build -t backend ./application/backend
-        docker tag backend:latest \
-        $ACCOUNT_ID.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/backend:latest
-        docker push \
-        $ACCOUNT_ID.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/backend:latest
+        docker tag backend:latest $IMAGE_URI
+        docker push $IMAGE_URI
 
-    # -------------------------
-    # 7. Build & Push Frontend
-    # -------------------------
-    - name: Build Frontend
+    # -------------------------------------------------
+    # 5. Build & Push Frontend Image
+    # -------------------------------------------------
+    - name: Build & Push Frontend
       run: |
         ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+        IMAGE_URI=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_FRONTEND:latest
+
         docker build -t frontend ./application/frontend
-        docker tag frontend:latest \
-        $ACCOUNT_ID.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/frontend:latest
-        docker push \
-        $ACCOUNT_ID.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/frontend:latest
+        docker tag frontend:latest $IMAGE_URI
+        docker push $IMAGE_URI
+
+    # -------------------------------------------------
+    # 6. Update kubeconfig for EKS
+    # -------------------------------------------------
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig \
+          --region $AWS_REGION \
+          --name $CLUSTER_NAME
+
+    # -------------------------------------------------
+    # 7. Deploy to EKS
+    # -------------------------------------------------
+    - name: Deploy Application to EKS
+      run: |
+        kubectl apply -f k8s/db-secret.yaml
+        kubectl apply -f k8s/backend-config.yaml
+        kubectl apply -f k8s/mysql-init-config.yaml
+        kubectl apply -f k8s/mysql.yaml
+        kubectl apply -f k8s/backend.yaml
+        kubectl apply -f k8s/backend-hpa.yaml
+        kubectl apply -f k8s/frontend.yaml
+        kubectl apply -f k8s/ingress.yaml
+
+    # -------------------------------------------------
+    # 8. Verify Rollout
+    # -------------------------------------------------
+    - name: Verify Rollout
+      run: |
+        kubectl rollout status deployment/backend
+        kubectl rollout status deployment/frontend
+
+# name: EKS Full CI/CD (OIDC)
+
+# on:
+#   push:
+#     branches:
+#       - main
+
+# permissions:
+#   id-token: write
+#   contents: read
+
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#     # -------------------------
+#     # 1. Checkout
+#     # -------------------------
+#     - name: Checkout
+#       uses: actions/checkout@v4
 
 #     # -------------------------
-#     # 8. Deploy to EKS
+#     # 2. Configure AWS via OIDC
 #     # -------------------------
-#     - name: Deploy MySQL
-#       run: kubectl apply -f k8s/mysql.yaml
+#     - name: Configure AWS Credentials (OIDC)
+#       uses: aws-actions/configure-aws-credentials@v4
+#       with:
+#         role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+#         aws-region: ${{ secrets.AWS_REGION }}
 
-#     - name: Deploy Backend
-#       run: kubectl apply -f k8s/backend.yaml
+# #     # -------------------------
+# #     # 3. Terraform
+# #     # -------------------------
+# #     - name: Setup Terraform
+# #       uses: hashicorp/setup-terraform@v3
 
-#     - name: Deploy Frontend
-#       run: kubectl apply -f k8s/frontend.yaml
+# #     - name: Terraform Init
+# #       run: |
+# #         cd terraform
+# #         terraform init
+
+# #     - name: Terraform Plan
+# #       run: |
+# #         cd terraform
+# #         terraform plan
+
+# #     # - name: Terraform apply
+# #     #   run: |
+# #     #     cd terraform
+# #     #     terraform apply -auto-approve
+
+# #     # # -------------------------
+# #     # # 4. kubeconfig
+# #     # # -------------------------
+# #     # - name: Update kubeconfig
+# #     #   run: |
+# #     #     aws eks update-kubeconfig \
+# #     #       --region ${{ secrets.AWS_REGION }} \
+# #     #       --name demo-eks
 
 #     # -------------------------
-#     # 9. Terraform Destroy (ONLY IF PIPELINE FAILS)
+#     # 5. ECR Login
 #     # -------------------------
-#     - name: Terraform Destroy on Failure
-#       if: failure()
+#     - name: Login to ECR
 #       run: |
-#         echo "Pipeline failed. Destroying infrastructure..."
-#         cd terraform
-#         terraform destroy -auto-approve
+#         aws ecr get-login-password --region ${{ secrets.AWS_REGION }} \
+#         | docker login --username AWS \
+#         --password-stdin \
+#         $(aws sts get-caller-identity --query Account --output text).dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+
+#     # -------------------------
+#     # 6. Build & Push Backend
+#     # -------------------------
+#     - name: Build Backend
+#       run: |
+#         ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+#         docker build -t backend ./application/backend
+#         docker tag backend:latest \
+#         $ACCOUNT_ID.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/backend:latest
+#         docker push \
+#         $ACCOUNT_ID.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/backend:latest
+
+#     # -------------------------
+#     # 7. Build & Push Frontend
+#     # -------------------------
+#     - name: Build Frontend
+#       run: |
+#         ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+#         docker build -t frontend ./application/frontend
+#         docker tag frontend:latest \
+#         $ACCOUNT_ID.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/frontend:latest
+#         docker push \
+#         $ACCOUNT_ID.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/frontend:latest
+
+# #     # -------------------------
+# #     # 8. Deploy to EKS
+# #     # -------------------------
+# #     - name: Deploy MySQL
+# #       run: kubectl apply -f k8s/mysql.yaml
+
+# #     - name: Deploy Backend
+# #       run: kubectl apply -f k8s/backend.yaml
+
+# #     - name: Deploy Frontend
+# #       run: kubectl apply -f k8s/frontend.yaml
+
+# #     # -------------------------
+# #     # 9. Terraform Destroy (ONLY IF PIPELINE FAILS)
+# #     # -------------------------
+# #     - name: Terraform Destroy on Failure
+# #       if: failure()
+# #       run: |
+# #         echo "Pipeline failed. Destroying infrastructure..."
+# #         cd terraform
+# #         terraform destroy -auto-approve
