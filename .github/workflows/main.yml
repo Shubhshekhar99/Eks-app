@@ -83,15 +83,14 @@ jobs:
     # -------------------------------------------------
     - name: Deploy Application to EKS
       run: |
-        kubectl apply -f k8s/db-secret.yaml
-        kubectl apply -f k8s/backend-config.yaml
-        kubectl apply -f k8s/mysql-init-config.yaml
-        kubectl apply -f k8s/mysql.yaml
-        kubectl apply -f k8s/backend.yaml
-        kubectl apply -f k8s/backend-hpa.yaml
-        kubectl apply -f k8s/frontend.yaml
-        kubectl apply -f k8s/ingress.yaml
-
+        kubectl apply --validate=false -f k8s/db-secret.yaml
+        kubectl apply --validate=false -f k8s/backend-config.yaml
+        kubectl apply --validate=false -f k8s/mysql-init-config.yaml
+        kubectl apply --validate=false -f k8s/mysql.yaml
+        kubectl apply --validate=false -f k8s/backend.yaml
+        kubectl apply --validate=false -f k8s/backend-hpa.yaml
+        kubectl apply --validate=false -f k8s/frontend.yaml
+        kubectl apply --validate=false -f k8s/ingress.yaml
     # -------------------------------------------------
     # 8. Verify Rollout
     # -------------------------------------------------
