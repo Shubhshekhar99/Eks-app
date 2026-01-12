@@ -12,13 +12,26 @@ spec:
       labels:
         app: backend
     spec:
+
+      # ✅ WAIT FOR MYSQL BEFORE STARTING BACKEND
+      initContainers:
+      - name: wait-for-mysql
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - |
+          until nc -z mysql 3306; do
+            echo "Waiting for MySQL..."
+            sleep 3
+          done
+
       containers:
       - name: backend
         image: 360477615168.dkr.ecr.us-west-1.amazonaws.com/backend:latest
         ports:
         - containerPort: 5000
 
-        # ✅ EXPLICIT ENV VARIABLES (THIS FIXES THE CRASH)
         env:
         - name: DB_HOST
           valueFrom:
