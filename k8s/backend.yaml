@@ -14,9 +14,18 @@ spec:
     spec:
       containers:
       - name: backend
-        image: <ECR>/backend:latest
+        image: 360477615168.dkr.ecr.us-west-1.amazonaws.com/backend:latest
         ports:
         - containerPort: 5000
+        env:
+        - name: DB_HOST
+          value: mysql-0.mysql
+        - name: DB_USER
+          value: root
+        - name: DB_PASSWORD
+          value: rootpass
+        - name: DB_NAME
+          value: demo
 ---
 apiVersion: v1
 kind: Service
@@ -27,3 +36,4 @@ spec:
     app: backend
   ports:
   - port: 5000
+    targetPort: 5000
