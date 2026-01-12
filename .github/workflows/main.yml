@@ -1,116 +1,116 @@
-name: EKS Full CI/CD (OIDC)
+# name: EKS Full CI/CD (OIDC)
 
-on:
-  push:
-    branches:
-      - main
+# on:
+#   push:
+#     branches:
+#       - main
 
-permissions:
-  id-token: write
-  contents: read
+# permissions:
+#   id-token: write
+#   contents: read
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
 
-    steps:
-    # -------------------------
-    # 1. Checkout
-    # -------------------------
-    - name: Checkout
-      uses: actions/checkout@v4
+#     steps:
+#     # -------------------------
+#     # 1. Checkout
+#     # -------------------------
+#     - name: Checkout
+#       uses: actions/checkout@v4
 
-    # -------------------------
-    # 2. Configure AWS via OIDC
-    # -------------------------
-    - name: Configure AWS Credentials (OIDC)
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
-        aws-region: ${{ secrets.AWS_REGION }}
+#     # -------------------------
+#     # 2. Configure AWS via OIDC
+#     # -------------------------
+#     - name: Configure AWS Credentials (OIDC)
+#       uses: aws-actions/configure-aws-credentials@v4
+#       with:
+#         role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+#         aws-region: ${{ secrets.AWS_REGION }}
 
-    # -------------------------
-    # 3. Terraform
-    # -------------------------
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
+#     # -------------------------
+#     # 3. Terraform
+#     # -------------------------
+#     - name: Setup Terraform
+#       uses: hashicorp/setup-terraform@v3
 
-    - name: Terraform Init
-      run: |
-        cd terraform
-        terraform init
+#     - name: Terraform Init
+#       run: |
+#         cd terraform
+#         terraform init
 
-    - name: Terraform Plan
-      run: |
-        cd terraform
-        terraform plan
+#     - name: Terraform Plan
+#       run: |
+#         cd terraform
+#         terraform plan
 
-    # - name: Terraform apply
-    #   run: |
-    #     cd terraform
-    #     terraform apply -auto-approve
+#     # - name: Terraform apply
+#     #   run: |
+#     #     cd terraform
+#     #     terraform apply -auto-approve
 
-    # # -------------------------
-    # # 4. kubeconfig
-    # # -------------------------
-    # - name: Update kubeconfig
-    #   run: |
-    #     aws eks update-kubeconfig \
-    #       --region ${{ secrets.AWS_REGION }} \
-    #       --name demo-eks
+#     # # -------------------------
+#     # # 4. kubeconfig
+#     # # -------------------------
+#     # - name: Update kubeconfig
+#     #   run: |
+#     #     aws eks update-kubeconfig \
+#     #       --region ${{ secrets.AWS_REGION }} \
+#     #       --name demo-eks
 
-    # -------------------------
-    # 5. ECR Login
-    # -------------------------
-    - name: Login to ECR
-      run: |
-        aws ecr get-login-password --region ${{ secrets.AWS_REGION }} \
-        | docker login --username AWS \
-        --password-stdin \
-        $(aws sts get-caller-identity --query Account --output text).dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+#     # -------------------------
+#     # 5. ECR Login
+#     # -------------------------
+#     - name: Login to ECR
+#       run: |
+#         aws ecr get-login-password --region ${{ secrets.AWS_REGION }} \
+#         | docker login --username AWS \
+#         --password-stdin \
+#         $(aws sts get-caller-identity --query Account --output text).dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
 
-    # -------------------------
-    # 6. Build & Push Backend
-    # -------------------------
-    - name: Build Backend
-      run: |
-        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-        docker build -t backend ./application/backend
-        docker tag backend:latest \
-        $ACCOUNT_ID.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/backend:latest
-        docker push \
-        $ACCOUNT_ID.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/backend:latest
+#     # -------------------------
+#     # 6. Build & Push Backend
+#     # -------------------------
+#     - name: Build Backend
+#       run: |
+#         ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+#         docker build -t backend ./application/backend
+#         docker tag backend:latest \
+#         $ACCOUNT_ID.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/backend:latest
+#         docker push \
+#         $ACCOUNT_ID.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/backend:latest
 
-    # -------------------------
-    # 7. Build & Push Frontend
-    # -------------------------
-    - name: Build Frontend
-      run: |
-        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-        docker build -t frontend ./application/frontend
-        docker tag frontend:latest \
-        $ACCOUNT_ID.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/frontend:latest
-        docker push \
-        $ACCOUNT_ID.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/frontend:latest
+#     # -------------------------
+#     # 7. Build & Push Frontend
+#     # -------------------------
+#     - name: Build Frontend
+#       run: |
+#         ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+#         docker build -t frontend ./application/frontend
+#         docker tag frontend:latest \
+#         $ACCOUNT_ID.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/frontend:latest
+#         docker push \
+#         $ACCOUNT_ID.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/frontend:latest
 
-    # -------------------------
-    # 8. Deploy to EKS
-    # -------------------------
-    - name: Deploy MySQL
-      run: kubectl apply -f k8s/mysql.yaml
+#     # -------------------------
+#     # 8. Deploy to EKS
+#     # -------------------------
+#     - name: Deploy MySQL
+#       run: kubectl apply -f k8s/mysql.yaml
 
-    - name: Deploy Backend
-      run: kubectl apply -f k8s/backend.yaml
+#     - name: Deploy Backend
+#       run: kubectl apply -f k8s/backend.yaml
 
-    - name: Deploy Frontend
-      run: kubectl apply -f k8s/frontend.yaml
+#     - name: Deploy Frontend
+#       run: kubectl apply -f k8s/frontend.yaml
 
-    # -------------------------
-    # 9. Terraform Destroy (ONLY IF PIPELINE FAILS)
-    # -------------------------
-    - name: Terraform Destroy on Failure
-      if: failure()
-      run: |
-        echo "Pipeline failed. Destroying infrastructure..."
-        cd terraform
-        terraform destroy -auto-approve
+#     # -------------------------
+#     # 9. Terraform Destroy (ONLY IF PIPELINE FAILS)
+#     # -------------------------
+#     - name: Terraform Destroy on Failure
+#       if: failure()
+#       run: |
+#         echo "Pipeline failed. Destroying infrastructure..."
+#         cd terraform
+#         terraform destroy -auto-approve
