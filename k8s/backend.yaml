@@ -1,3 +1,4 @@
+# k8s/backend.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -17,15 +18,11 @@ spec:
         image: 360477615168.dkr.ecr.us-west-1.amazonaws.com/backend:latest
         ports:
         - containerPort: 5000
-        env:
-        - name: DB_HOST
-          value: mysql-0.mysql
-        - name: DB_USER
-          value: root
-        - name: DB_PASSWORD
-          value: rootpass
-        - name: DB_NAME
-          value: demo
+        envFrom:
+        - configMapRef:
+            name: backend-config
+        - secretRef:
+            name: db-secret
 ---
 apiVersion: v1
 kind: Service
