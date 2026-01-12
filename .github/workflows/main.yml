@@ -77,6 +77,10 @@ jobs:
         aws eks update-kubeconfig \
           --region $AWS_REGION \
           --name $CLUSTER_NAME
+    - name: Debug cluster access
+      run: |
+        kubectl auth can-i create secrets
+        kubectl get ns
 
     # -------------------------------------------------
     # 7. Deploy to EKS
