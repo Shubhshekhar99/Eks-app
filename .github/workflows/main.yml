@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 env:
-  CLUSTER_NAME: demo-eks
+  CLUSTER_NAME: demo-eks-temp
   AWS_REGION: us-west-1
   ECR_REPO_BACKEND: backend
   ECR_REPO_FRONTEND: frontend
