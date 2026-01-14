@@ -1,4 +1,6 @@
-# Cluster Role
+# =====================
+# CLUSTER IAM ROLE
+# =====================
 resource "aws_iam_role" "cluster_role" {
   name = "${var.cluster_name}-cluster-role"
 
@@ -17,7 +19,9 @@ resource "aws_iam_role_policy_attachment" "cluster_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
 }
 
-# EKS Cluster
+# =====================
+# EKS CLUSTER
+# =====================
 resource "aws_eks_cluster" "this" {
   name     = var.cluster_name
   role_arn = aws_iam_role.cluster_role.arn
@@ -27,12 +31,13 @@ resource "aws_eks_cluster" "this" {
   }
 
   depends_on = [
-    aws_iam_role.cluster_role,
     aws_iam_role_policy_attachment.cluster_policy
   ]
 }
 
-# Node Role
+# =====================
+# NODE IAM ROLE
+# =====================
 resource "aws_iam_role" "node_role" {
   name = "${var.cluster_name}-node-role"
 
@@ -46,22 +51,24 @@ resource "aws_iam_role" "node_role" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "node_policy1" {
+resource "aws_iam_role_policy_attachment" "node_policy_worker" {
   role       = aws_iam_role.node_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
 }
 
-resource "aws_iam_role_policy_attachment" "node_policy2" {
+resource "aws_iam_role_policy_attachment" "node_policy_cni" {
   role       = aws_iam_role.node_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
 }
 
-resource "aws_iam_role_policy_attachment" "node_policy3" {
+resource "aws_iam_role_policy_attachment" "node_policy_ecr" {
   role       = aws_iam_role.node_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 
-# Node Group
+# =====================
+# NODE GROUP
+# =====================
 resource "aws_eks_node_group" "nodes" {
   cluster_name    = aws_eks_cluster.this.name
   node_group_name = "${var.cluster_name}-nodes"
@@ -77,11 +84,8 @@ resource "aws_eks_node_group" "nodes" {
   instance_types = [var.node_instance_type]
 
   depends_on = [
-    aws_iam_role.node_role,
-    aws_iam_role_policy_attachment.node_policy1,
-    aws_iam_role_policy_attachment.node_policy2,
-    aws_iam_role_policy_attachment.node_policy3,
-    aws_eks_cluster.this
+    aws_iam_role_policy_attachment.node_policy_worker,
+    aws_iam_role_policy_attachment.node_policy_cni,
+    aws_iam_role_policy_attachment.node_policy_ecr
   ]
 }
-
