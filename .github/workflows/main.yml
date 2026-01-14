@@ -1,107 +1,139 @@
-name: EKS Full CI/CD (OIDC)
+# name: EKS Full CI/CD (OIDC)
 
-on:
-  push:
-    branches:
-      - main
+# on:
+#   push:
+#     branches:
+#       - main
 
-permissions:
-  id-token: write
-  contents: read
+# permissions:
+#   id-token: write
+#   contents: read
 
-env:
-  CLUSTER_NAME: demo-eks-temp
-  AWS_REGION: us-west-1
-  ECR_REPO_BACKEND: backend
-  ECR_REPO_FRONTEND: frontend
+# env:
+#   CLUSTER_NAME: demo-eks-temp
+#   AWS_REGION: us-west-1
+#   ECR_REPO_BACKEND: backend
+#   ECR_REPO_FRONTEND: frontend
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
 
-    steps:
-    # -------------------------------------------------
-    # 1. Checkout source code
-    # -------------------------------------------------
-    - name: Checkout
-      uses: actions/checkout@v4
+#     steps:
+#     # -------------------------------------------------
+#     # 1. Checkout source code
+#     # -------------------------------------------------
+#     - name: Checkout
+#       uses: actions/checkout@v4
 
-    # -------------------------------------------------
-    # 2. Configure AWS Credentials via OIDC
-    # -------------------------------------------------
-    - name: Configure AWS Credentials (OIDC)
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
-        aws-region: ${{ env.AWS_REGION }}
+#     # -------------------------------------------------
+#     # 2. Configure AWS Credentials via OIDC
+#     # -------------------------------------------------
+#     - name: Configure AWS Credentials (OIDC)
+#       uses: aws-actions/configure-aws-credentials@v4
+#       with:
+#         role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+#         aws-region: ${{ env.AWS_REGION }}
 
-    # -------------------------------------------------
-    # 3. Login to Amazon ECR
-    # -------------------------------------------------
-    - name: Login to Amazon ECR
-      run: |
-        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-        aws ecr get-login-password --region $AWS_REGION \
-        | docker login --username AWS \
-          --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+#           -------------------------
+#       # 3. Terraform
+#       # -------------------------
+#     - name: Setup Terraform
+#       uses: hashicorp/setup-terraform@v3
 
-    # -------------------------------------------------
-    # 4. Build & Push Backend Image
-    # -------------------------------------------------
-    - name: Build & Push Backend
-      run: |
-        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-        IMAGE_URI=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_BACKEND:latest
+#     - name: Terraform Init
+#       run: |
+#         cd terraform
+#         terraform init
 
-        docker build -t backend ./application/backend
-        docker tag backend:latest $IMAGE_URI
-        docker push $IMAGE_URI
+#     - name: Terraform Plan
+#       run: |
+#         cd terraform
+#         terraform plan
 
-    # -------------------------------------------------
-    # 5. Build & Push Frontend Image
-    # -------------------------------------------------
-    - name: Build & Push Frontend
-      run: |
-        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-        IMAGE_URI=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_FRONTEND:latest
+#     - name: Terraform apply
+#       run: |
+#         cd terraform
+#         terraform apply -auto-approve
 
-        docker build -t frontend ./application/frontend
-        docker tag frontend:latest $IMAGE_URI
-        docker push $IMAGE_URI
+#     # -------------------------------------------------
+#     # 3. Login to Amazon ECR
+#     # -------------------------------------------------
+#     - name: Login to Amazon ECR
+#       run: |
+#         ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+#         aws ecr get-login-password --region $AWS_REGION \
+#         | docker login --username AWS \
+#           --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
-    # -------------------------------------------------
-    # 6. Update kubeconfig for EKS
-    # -------------------------------------------------
-    - name: Update kubeconfig
-      run: |
-        aws eks update-kubeconfig \
-          --region $AWS_REGION \
-          --name $CLUSTER_NAME
-    - name: Debug cluster access
-      run: |
-        kubectl auth can-i create secrets
-        kubectl get ns
+#     # -------------------------------------------------
+#     # 4. Build & Push Backend Image
+#     # -------------------------------------------------
+#     - name: Build & Push Backend
+#       run: |
+#         ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+#         IMAGE_URI=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_BACKEND:latest
 
-    # -------------------------------------------------
-    # 7. Deploy to EKS
-    # -------------------------------------------------
-    - name: Deploy Application to EKS
-      run: |
-        kubectl apply --validate=false -f k8s/db-secret.yaml
-        kubectl apply --validate=false -f k8s/backend-config.yaml
-        kubectl apply --validate=false -f k8s/mysql-init-config.yaml
-        kubectl apply --validate=false -f k8s/mysql.yaml
-        kubectl apply --validate=false -f k8s/backend.yaml
-        kubectl apply --validate=false -f k8s/backend-hpa.yaml
-        kubectl apply --validate=false -f k8s/frontend.yaml
-        kubectl apply --validate=false -f k8s/ingress.yaml
-    # -------------------------------------------------
-    # 8. Verify Rollout
-    # -------------------------------------------------
-    - name: Verify Rollout
-      run: |
-        kubectl rollout status deployment/backend
-        kubectl rollout status deployment/frontend
+#         docker build -t backend ./application/backend
+#         docker tag backend:latest $IMAGE_URI
+#         docker push $IMAGE_URI
+
+#     # -------------------------------------------------
+#     # 5. Build & Push Frontend Image
+#     # -------------------------------------------------
+#     - name: Build & Push Frontend
+#       run: |
+#         ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+#         IMAGE_URI=$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_FRONTEND:latest
+
+#         docker build -t frontend ./application/frontend
+#         docker tag frontend:latest $IMAGE_URI
+#         docker push $IMAGE_URI
+
+#     # -------------------------------------------------
+#     # 6. Update kubeconfig for EKS
+#     # -------------------------------------------------
+#     - name: Update kubeconfig
+#       run: |
+#         aws eks update-kubeconfig \
+#           --region $AWS_REGION \
+#           --name $CLUSTER_NAME
+#     - name: Debug cluster access
+#       run: |
+#         kubectl auth can-i create secrets
+#         kubectl get ns
+
+#     # -------------------------------------------------
+#     # 7. Deploy to EKS
+#     # -------------------------------------------------
+#     - name: Deploy Application to EKS
+#       run: |
+#         kubectl apply --validate=false -f k8s/db-secret.yaml
+#         kubectl apply --validate=false -f k8s/backend-config.yaml
+#         kubectl apply --validate=false -f k8s/mysql-init-config.yaml
+#         kubectl apply --validate=false -f k8s/mysql.yaml
+#         kubectl apply --validate=false -f k8s/backend.yaml
+#         kubectl apply --validate=false -f k8s/backend-hpa.yaml
+#         kubectl apply --validate=false -f k8s/frontend.yaml
+#         kubectl apply --validate=false -f k8s/ingress.yaml
+#     # -------------------------------------------------
+#     # 8. Verify Rollout
+#     # -------------------------------------------------
+#     - name: Verify Rollout
+#       run: |
+#         kubectl rollout status deployment/backend
+#         kubectl rollout status deployment/frontend
+
+#     # -------------------------
+#     # 9. Terraform Destroy (ONLY IF PIPELINE FAILS)
+#     # -------------------------
+#     - name: Terraform Destroy on Failure
+#       if: failure()
+#       run: |
+#         echo "Pipeline failed. Destroying infrastructure..."
+#         cd terraform
+#         terraform destroy -auto-approve
+
 
 # name: EKS Full CI/CD (OIDC)
 
