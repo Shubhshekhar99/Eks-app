@@ -33,11 +33,11 @@ jobs:
       uses: aws-actions/configure-aws-credentials@v4
       with:
         role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
-        aws-region: ${{ env.AWS_REGION }}
+        aws-region: us-west-1
 
-          -------------------------
-      # 3. Terraform
-      # -------------------------
+    # -------------------------------------------------
+    # 3. Terraform
+    # -------------------------------------------------
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
 
@@ -51,13 +51,13 @@ jobs:
         cd terraform
         terraform plan
 
-    - name: Terraform apply
+    - name: Terraform Apply
       run: |
         cd terraform
         terraform apply -auto-approve
 
     # -------------------------------------------------
-    # 3. Login to Amazon ECR
+    # 4. Login to Amazon ECR
     # -------------------------------------------------
     - name: Login to Amazon ECR
       run: |
@@ -67,7 +67,7 @@ jobs:
           --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
     # -------------------------------------------------
-    # 4. Build & Push Backend Image
+    # 5. Build & Push Backend Image
     # -------------------------------------------------
     - name: Build & Push Backend
       run: |
@@ -79,7 +79,7 @@ jobs:
         docker push $IMAGE_URI
 
     # -------------------------------------------------
-    # 5. Build & Push Frontend Image
+    # 6. Build & Push Frontend Image
     # -------------------------------------------------
     - name: Build & Push Frontend
       run: |
@@ -91,20 +91,21 @@ jobs:
         docker push $IMAGE_URI
 
     # -------------------------------------------------
-    # 6. Update kubeconfig for EKS
+    # 7. Update kubeconfig for EKS
     # -------------------------------------------------
     - name: Update kubeconfig
       run: |
         aws eks update-kubeconfig \
           --region $AWS_REGION \
           --name $CLUSTER_NAME
+
     - name: Debug cluster access
       run: |
         kubectl auth can-i create secrets
         kubectl get ns
 
     # -------------------------------------------------
-    # 7. Deploy to EKS
+    # 8. Deploy to EKS
     # -------------------------------------------------
     - name: Deploy Application to EKS
       run: |
@@ -116,17 +117,18 @@ jobs:
         kubectl apply --validate=false -f k8s/backend-hpa.yaml
         kubectl apply --validate=false -f k8s/frontend.yaml
         kubectl apply --validate=false -f k8s/ingress.yaml
+
     # -------------------------------------------------
-    # 8. Verify Rollout
+    # 9. Verify Rollout
     # -------------------------------------------------
     - name: Verify Rollout
       run: |
         kubectl rollout status deployment/backend
         kubectl rollout status deployment/frontend
 
-    # -------------------------
-    # 9. Terraform Destroy (ONLY IF PIPELINE FAILS)
-    # -------------------------
+    # -------------------------------------------------
+    # 10. Terraform Destroy (ONLY IF PIPELINE FAILS)
+    # -------------------------------------------------
     - name: Terraform Destroy on Failure
       if: failure()
       run: |
