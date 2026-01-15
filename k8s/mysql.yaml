@@ -5,6 +5,11 @@ metadata:
 spec:
   serviceName: mysql
   replicas: 1
+
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+
   selector:
     matchLabels:
       app: mysql
@@ -44,19 +49,8 @@ spec:
       name: mysql-data
     spec:
       accessModes:
-        - ReadWriteOnce
+      - ReadWriteOnce
+      storageClassName: gp3
       resources:
         requests:
           storage: 5Gi
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: mysql
-spec:
-  type: ClusterIP
-  selector:
-    app: mysql
-  ports:
-  - port: 3306
-    targetPort: 3306
