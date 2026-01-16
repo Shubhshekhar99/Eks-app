@@ -1,3 +1,14 @@
+# -------------------------
+# VPC Module
+# -------------------------
+module "vpc" {
+  source = "./modules/vpc"
+
+  cluster_name        = var.cluster_name
+  vpc_cidr            = var.vpc_cidr
+  public_subnet_1_cidr = var.public_subnet_1_cidr
+  public_subnet_2_cidr = var.public_subnet_2_cidr
+}
 
 # -------------------------
 # EKS Module
