@@ -91,7 +91,7 @@ jobs:
         docker push $IMAGE_URI
 
     # -------------------------------------------------
-    # 10. Terraform Destroy (ONLY IF PIPELINE FAILS)
+    # 10. Terraform Destroy 
     # -------------------------------------------------
     - name: Terraform Destroy on Failure
       if: failure()
